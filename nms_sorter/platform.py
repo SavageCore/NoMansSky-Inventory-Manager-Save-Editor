@@ -11,7 +11,8 @@ operating system they are on -- stop being testable there (GOAL.md §9.1, the
 So this module holds five kinds of answer:
 
 * **the process check** (`game_status`), which is the gate the whole write
-  sequence hangs off, and which off Windows says "not known" without trying;
+  sequence hangs off: Toolhelp32/`tasklist` on Windows, `/proc` on Linux, and
+  "not known" on macOS;
 * **the refusal sentence** for a check that cannot run, because the reason
   differs between "the process list would not read" and "there is no process
   list to read here" (`refusal_sentence`);
@@ -29,15 +30,19 @@ So this module holds five kinds of answer:
   and `message_box`, which exist because a windowed PyInstaller build has no
   stdout and no console, so an unhandled exception in it is completely silent.
 
-## Why there is no Linux or macOS process check
+## The process check on Linux, and why macOS has none
 
-Not an omission. Under Proton the game runs inside a Wine prefix, and a native
-`ps` does not list `NMS.exe`: it lists the Proton wrapper. A check written
-there would answer "not running" while the game is running, and the one thing
-the write gate must never do is answer "closed" about a save the game has open.
-A wrong "not running" costs a play session. So off Windows the answer is
-`known: False` and apply refuses (DECISIONS.md, 2026-09-14, "Apply is
-Windows-only"). Plan, browse and the codec work everywhere.
+On Linux the game runs through Proton, but Wine gives the game process the
+name of the Windows executable, so `NMS.exe` appears in `/proc`.
+`_game_status_linux` reads `/proc/<pid>/comm` and falls back to the
+NUL-separated command line; it shells out to nothing. If `/proc` cannot be
+read, the answer is `known: False` and apply refuses, exactly as a failed
+Windows check does.
+
+macOS has no check. A native answer would be a guess about the process name
+and about whether the game holds the save, and a wrong "not running" costs a
+play session. So on macOS the answer is `known: False` and apply refuses.
+Plan, browse and the codec work everywhere.
 
 ## The two-second cache
 
@@ -108,17 +113,18 @@ _STEAM_LIBRARY_PATH = re.compile(r'^\s*"path"\s+"(.*)"\s*$')
 #: here can do is refuse a write. Set it to `linux`, `darwin` or `win32`.
 FAKE_PLATFORM_ENV = "NMS_SORTER_FAKE_PLATFORM"
 
-#: the sentence apply refuses with when there is no process list to read.
+#: the sentence apply refuses with on a platform with no process check.
 #: Written out as one literal rather than composed, because
-#: `docs/TROUBLESHOOTING.md` and `docs/SAFETY.md` quote it verbatim and
-#: `tests/test_docs.py` greps this source for the quoted form (GOAL.md P5-9).
+#: `docs/TROUBLESHOOTING.md` quotes it verbatim and `tests/test_docs.py` greps
+#: this source for the quoted form (GOAL.md P5-9).
 UNSUPPORTED_REFUSAL = (
-    "the process check needs Windows, so it cannot be told whether NMS.exe is "
-    "running; plan and browse work here, apply does not")
+    "the process check needs Windows or Linux, so it cannot be told whether "
+    "NMS.exe is running; plan and browse work here, apply does not")
 
-#: what `game_status()["error"]` says off Windows. The short form, because the
-#: long form is `UNSUPPORTED_REFUSAL` and the API returns both.
-UNSUPPORTED_ERROR = "the process check needs Windows"
+#: what `game_status()["error"]` says on a platform with no process check. The
+#: short form, because the long form is `UNSUPPORTED_REFUSAL` and the API
+#: returns both.
+UNSUPPORTED_ERROR = "the process check needs Windows or Linux"
 
 #: `detect_saves()` has no root to probe when neither the Windows path nor a
 #: Linux Proton prefix nor the macOS folder is there, and says so rather than
@@ -170,6 +176,11 @@ MAX_PATH = 260
 #: passing it to `subprocess` -- which raises `ValueError` on POSIX -- can only
 #: happen on a branch POSIX never reaches.
 CREATE_NO_WINDOW = 0x08000000
+
+#: the Linux process table. Read directly, never through `ps` or `pgrep`, so a
+#: missing or restricted `/proc` is an answer this check can name and a fake
+#: tree is a test fixture.
+PROC_ROOT = "/proc"
 
 
 class PROCESSENTRY32(ctypes.Structure):
@@ -229,10 +240,70 @@ def _game_status_windows():
                     "error": "%s / %s" % (exc, exc2)}
 
 
+def _proc_arg_matches(raw):
+    """True if one NUL-separated argv entry names `GAME_PROCESS`.
+
+    Wine launches the game with a Windows path, which may use backslashes, so
+    both separators are honoured. Matching the last component rather than a
+    substring keeps a text editor opened on `NMS.exe` or a shell history line
+    from counting as the game.
+    """
+    name = GAME_PROCESS.lower()
+    for arg in raw.split(b"\0"):
+        if not arg:
+            continue
+        text = arg.decode("utf-8", "replace").replace("\\", "/")
+        if text.rsplit("/", 1)[-1].lower() == name:
+            return True
+    return False
+
+
+def _read_proc_bytes(path):
+    """One small `/proc` file, or empty bytes if it cannot be read."""
+    try:
+        with open(path, "rb") as fh:
+            return fh.read(4096)
+    except OSError:
+        return b""
+
+
+def _game_status_linux():
+    """-> the `/proc` answer. Never raises, and never shells out.
+
+    Wine names the game process after the Windows executable, so `comm` is
+    `NMS.exe`; the command line is the fallback for a Wine version or a copied
+    prefix that names it differently. A process whose files cannot be read is
+    skipped rather than failing the whole check, because the game runs as the
+    same user as the sorter. If `/proc` itself cannot be listed, the answer is
+    unknown and apply refuses rather than guessing.
+    """
+    name = GAME_PROCESS.lower()
+    try:
+        entries = os.listdir(PROC_ROOT)
+    except OSError as exc:
+        return {"running": None, "pids": [], "method": "failed",
+                "known": False, "process": GAME_PROCESS,
+                "error": "could not list %s: %s" % (PROC_ROOT, exc)}
+    pids = []
+    for entry in entries:
+        if not entry.isdigit():
+            continue
+        base = os.path.join(PROC_ROOT, entry)
+        comm = _read_proc_bytes(os.path.join(base, "comm"))
+        comm = comm.decode("utf-8", "replace").strip().lower()
+        if comm == name:
+            pids.append(int(entry))
+            continue
+        if _proc_arg_matches(_read_proc_bytes(os.path.join(base, "cmdline"))):
+            pids.append(int(entry))
+    return {"running": bool(pids), "pids": sorted(pids), "method": "proc",
+            "known": True, "process": GAME_PROCESS}
+
+
 def _game_status_unsupported():
-    """The off-Windows answer. Nothing is attempted: no `ps`, no `pgrep`, no
-    `/proc` walk. See the module docstring for why a guess is worse than a
-    refusal here."""
+    """The macOS answer. Nothing is attempted: a native process name and a
+    native save-holding rule have not been measured, and a wrong "closed" is
+    the one answer this gate must never give."""
     return {"running": None, "known": False,
             "method": "unsupported: %s" % platform_name(),
             "pids": [], "process": GAME_PROCESS,
@@ -270,7 +341,12 @@ def game_status(max_age=None):
         cached = _status_cache
         if cached is not None and max_age > 0 and (now - cached[0]) < max_age:
             return _copy_status(cached[1])
-    st = _game_status_windows() if is_windows() else _game_status_unsupported()
+    if is_windows():
+        st = _game_status_windows()
+    elif is_linux():
+        st = _game_status_linux()
+    else:
+        st = _game_status_unsupported()
     with _status_lock:
         _status_cache = (time.monotonic(), _copy_status(st))
     return _copy_status(st)
@@ -287,10 +363,10 @@ def refusal_sentence(status):
     """The sentence apply refuses with when `status["known"]` is false.
 
     Two reasons, two sentences. "The process list would not read" is a Windows
-    machine with something in the way, and names the error so the operator can
-    act on it. "There is no process list here" is a platform fact and no error
-    string would help. Both end in a refusal; only the wording differs, and
-    the wording is the whole value of a refusal (GOAL.md §1.9).
+    or Linux machine with something in the way, and names the error so the
+    operator can act on it. "There is no process check here" is a macOS fact
+    and no error string would help. Both end in a refusal; only the wording
+    differs, and the wording is the whole value of a refusal (GOAL.md §1.9).
 
     Both say what to do, and neither says "quit the game". A running game is
     not what apply refuses any more -- a running game in a loaded save is --

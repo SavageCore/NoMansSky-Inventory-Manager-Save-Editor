@@ -414,9 +414,11 @@ failed and the reason is quoted in the message. A check that cannot run counts
 as a refusal, and the main-menu tick does not cover it: that tick says where
 you are in the game, not whether the game is up.
 fix: on Windows the usual causes are a security product blocking process
-enumeration or an unusually locked-down account. Allow the sorter to enumerate
-processes, or run it as the account that plays, and try again. Off Windows this
-is expected, because the process check needs Windows. Nothing was written.
+enumeration or an unusually locked-down account. On Linux the check reads
+`/proc`, so a container that hides it, or a `hidepid` mount that hides other
+users' processes, can cause this; run the sorter as the account that plays.
+Allow the sorter to enumerate processes and try again. macOS has no process
+check and gets the platform page instead. Nothing was written.
 
 ### identity round trip: this save does not re-serialise byte-for-byte; first difference at offset ...
 
@@ -890,17 +892,17 @@ this item. The cap is spent across every source, not per container.
 fix: apply and run again if you want more moved, or raise the cap. Nothing was
 written.
 
-### the process check needs Windows, so it cannot be told whether NMS.exe is running; plan and browse work here, apply does not
+### the process check needs Windows or Linux, so it cannot be told whether NMS.exe is running; plan and browse work here, apply does not
 
-cause: you are on Linux or macOS. Apply's first step reads whether No Man's Sky
-is running, and the only process check this build trusts is the Windows one;
-under Proton the game is invisible to a native process list, so an answer of
-"not running" here would be a guess about the one thing that loses play. This
-is a refusal by design, at step 1, before any backup is taken.
+cause: you are on macOS. Apply's first step reads whether No Man's Sky is
+running, and this build has no measured macOS process check. A guess about the
+one thing that loses play is worse than a refusal, so it refuses at step 1,
+before any backup is taken. Linux is not affected: there the game process is
+visible as `NMS.exe` in `/proc`, and the check reads it.
 fix: everything except apply works here: the page, the item table, the planner,
-the dry run. To write, run the sorter on Windows against the same folder; the
-configuration file is portable and nothing in it is platform-specific. Under
-Proton the save folder is
+the dry run. To write, run the sorter on Windows or on Linux against the same
+folder; the configuration file is portable and nothing in it is
+platform-specific. On Linux the save folder is
 `<steam library>/steamapps/compatdata/275850/pfx/drive_c/users/steamuser/AppData/Roaming/HelloGames/NMS`,
 and the first-run page finds it in every Steam library it knows. `--folder
 <path>` points the sorter at a prefix outside those libraries.

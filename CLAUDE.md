@@ -70,7 +70,7 @@ must match what was approved. `restore()` is the same shape in reverse and refus
 has written since the apply. A change to `safety.py`, `codec.py`, `savemodel.py` or `planner.py`
 must leave the written bytes identical for every existing test; a test pins this.
 
-**Refused, not supported.** Apply off Windows; expedition saves; `mf_` formats other than 2004;
+**Refused, not supported.** Apply on macOS; expedition saves; `mf_` formats other than 2004;
 saves older than Waypoint (4.0); Game Pass, console and Switch saves. Refusing an unbuilt
 permutation is the policy. Do not add support without a full test campaign.
 

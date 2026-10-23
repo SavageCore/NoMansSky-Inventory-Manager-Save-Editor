@@ -88,7 +88,7 @@ GAME_CLOSED = {"running": False, "pids": [], "method": "test", "known": True,
 GAME_RUNNING = {"running": True, "pids": [4242], "method": "test",
                 "known": True, "process": "NMS.exe"}
 
-#: no answer at all: off Windows, or a process list something is blocking.
+#: no answer at all: macOS, or a process list something is blocking.
 GAME_UNKNOWN = {"running": None, "pids": [], "method": "failed",
                 "known": False, "process": "NMS.exe",
                 "error": "no windll / no tasklist"}
@@ -1738,8 +1738,8 @@ def test_the_game_route_is_the_platform_answer(srv, monkeypatch):
 
     The real answer, not the fixture's: `srv` arranges a closed game so the
     write path has something to read, and this is the one test that has to see
-    what the machine says -- off Windows that answer carries an `error` the
-    stub has no reason to invent."""
+    what the machine says -- on macOS that answer carries an `error` the stub
+    has no reason to invent."""
     monkeypatch.setattr(safety, "game_status", platformmod.game_status)
     status, b = jget(srv, "/api/game")
     assert status == 200
