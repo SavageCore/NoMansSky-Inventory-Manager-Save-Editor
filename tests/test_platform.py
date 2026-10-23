@@ -145,8 +145,107 @@ def test_refusal_sentence_survives_a_missing_status():
     assert "could not read the process list" in platformmod.refusal_sentence({})
 
 
-def test_off_windows_there_is_no_default_save_root(linux):
+def test_linux_without_a_steam_library_has_no_default_save_root(
+        linux, monkeypatch, tmp_path):
+    """Nothing to probe is None, not a made-up `~/.steam` path that would then
+    be reported as an empty save folder."""
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+    assert platformmod.save_roots() == []
     assert platformmod.default_save_root() is None
+
+
+def _proton_root(library, user="steamuser"):
+    """Build one Proton prefix's HelloGames/NMS folder and return its path."""
+    root = os.path.join(str(library), "steamapps", "compatdata",
+                        platformmod.PROTON_APPID, "pfx", "drive_c", "users",
+                        user, "AppData", "Roaming", "HelloGames", "NMS")
+    os.makedirs(root)
+    return root
+
+
+@pytest.fixture
+def linux_home(linux, monkeypatch, tmp_path):
+    """A home directory with no Steam in it, which each test then builds."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    return home
+
+
+def test_linux_finds_the_proton_prefix_in_native_steam(linux_home):
+    expected = _proton_root(linux_home / ".local" / "share" / "Steam")
+    assert platformmod.save_roots() == [expected]
+    assert platformmod.default_save_root() == expected
+
+
+def test_linux_reads_every_windows_user_in_the_prefix(linux_home):
+    """Steam's prefix says `steamuser`, but a copied or repaired prefix can
+    say something else, and a folder that is there is evidence."""
+    library = linux_home / ".local" / "share" / "Steam"
+    first = _proton_root(library, "steamuser")
+    second = _proton_root(library, "someone")
+    assert platformmod.save_roots() == [second, first]
+
+
+@pytest.mark.parametrize("parts", platformmod.STEAM_ROOT_PARTS)
+def test_linux_finds_each_known_steam_layout(linux_home, parts):
+    expected = _proton_root(linux_home.joinpath(*parts))
+    assert platformmod.save_roots() == [expected]
+
+
+def test_linux_reads_libraryfolders_for_a_game_on_another_drive(
+        linux_home, tmp_path):
+    """The Steam Deck microSD card and the second drive are both a library
+    outside `$HOME`, named only in `steamapps/libraryfolders.vdf`."""
+    steam = linux_home / ".local" / "share" / "Steam"
+    (steam / "steamapps").mkdir(parents=True)
+    external = tmp_path / "SteamLibrary"
+    external.mkdir()
+    (steam / "steamapps" / "libraryfolders.vdf").write_text(
+        '"libraryfolders"\n{\n\t"0"\n\t{\n\t\t"path"\t\t"%s"\n\t}\n}\n'
+        % external, encoding="utf-8")
+    expected = _proton_root(external)
+    assert platformmod.save_roots() == [expected]
+
+
+def test_linux_does_not_list_one_library_twice(linux_home):
+    """`~/.steam/steam` is a symlink to `~/.local/share/Steam` on a normal
+    install, and the VDF can name the root it already lives in."""
+    steam = linux_home / ".local" / "share" / "Steam"
+    expected = _proton_root(steam)
+    (steam / "steamapps" / "libraryfolders.vdf").write_text(
+        '"libraryfolders"\n{\n\t"0"\n\t{\n\t\t"path"\t\t"%s"\n\t}\n}\n'
+        % steam, encoding="utf-8")
+    assert platformmod.save_roots() == [expected]
+
+
+def test_macos_finds_the_native_save_folder(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.delenv(platformmod.FAKE_PLATFORM_ENV, raising=False)
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    expected = os.path.join(str(home), "Library", "Application Support",
+                            "HelloGames", "NMS")
+    assert platformmod.save_roots() == [expected]
+    assert platformmod.default_save_root() == expected
+
+
+def test_linux_hints_name_the_proton_prefix(linux_home):
+    hints = platformmod.save_path_hints()
+    assert hints
+    assert all("compatdata/%s" % platformmod.PROTON_APPID in path
+               for _label, path in hints)
+
+
+def test_macos_hints_name_the_application_support_folder(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.delenv(platformmod.FAKE_PLATFORM_ENV, raising=False)
+    hints = platformmod.save_path_hints()
+    assert hints == [("Native",
+                      "~/Library/Application Support/HelloGames/NMS")]
 
 
 @pytest.fixture
@@ -306,13 +405,24 @@ def test_state_dir_falls_back_to_local_share(monkeypatch, tmp_path):
     assert got.endswith(os.path.join(".local", "share", "NMS-Sorter"))
 
 
-def test_the_save_root_is_one_path_and_no_second_strategy(monkeypatch, tmp_path):
+def test_the_windows_save_root_is_the_appdata_folder(monkeypatch, tmp_path):
     monkeypatch.delenv(platformmod.FAKE_PLATFORM_ENV, raising=False)
     monkeypatch.setattr(sys, "platform", "win32")
     monkeypatch.setenv("APPDATA", str(tmp_path))
-    assert platformmod.default_save_root() == os.path.join(
-        str(tmp_path), "HelloGames", "NMS")
+    expected = os.path.join(str(tmp_path), "HelloGames", "NMS")
+    assert platformmod.default_save_root() == expected
+    assert platformmod.save_roots() == [expected]
     assert platformmod.SAVE_ROOT_PARTS == ("HelloGames", "NMS")
+
+
+def test_windows_hints_keep_the_three_layouts(monkeypatch):
+    monkeypatch.delenv(platformmod.FAKE_PLATFORM_ENV, raising=False)
+    monkeypatch.setattr(sys, "platform", "win32")
+    hints = platformmod.save_path_hints()
+    assert [label for label, _path in hints] == [
+        "Steam", "GOG", "Microsoft Store / Game Pass"]
+    assert "DefaultUser" in hints[1][1]
+    assert "not supported" in hints[2][1]
 
 
 # -------------------------------------------------------- the frozen build

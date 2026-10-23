@@ -33,14 +33,18 @@ say so.
 
 ### No No Man's Sky save folder was found.
 
-cause: nothing under `%APPDATA%\HelloGames\NMS` looks like a save folder. This is
-the **first-run page**, not an error: the sorter has not failed at anything, it
-just does not know which folder you play. It probes that one root and no other
-place on the machine, because a wrong guess sorts the wrong account.
-fix: the page lists the three layouts it knows (Steam `st_<id>`, GOG
-`DefaultUser`, and Microsoft Store / Game Pass, which is not supported) and has a
-text field. Paste the folder that holds `save.hg` and `mf_save.hg`. "Look again"
-re-runs the probe without a restart. Nothing was read and nothing was written.
+cause: nothing in the save folders this build probes looks like a save folder.
+On Windows that is `%APPDATA%\HelloGames\NMS`; on Linux it is the game's Proton
+prefix in each Steam library; on macOS it is
+`~/Library/Application Support/HelloGames/NMS`. This is the **first-run page**,
+not an error: the sorter has not failed at anything, it just does not know
+which folder you play. It probes those roots and no other place on the machine,
+because a wrong guess sorts the wrong account.
+fix: the page lists the layouts for your platform (on Windows, Steam `st_<id>`,
+GOG `DefaultUser`, and Microsoft Store / Game Pass, which is not supported; on
+Linux, the Proton path under native and Flatpak Steam) and has a text field.
+Paste the folder that holds `save.hg` and `mf_save.hg`. "Look again" re-runs
+the probe without a restart. Nothing was read and nothing was written.
 
 ### Port ... is already in use, and so are the ... ports after it -- another sorter, or something else, is listening there; stop it or pass --port with a free number.
 
@@ -847,15 +851,18 @@ The stamp has a resolution of one second, so two saves inside the same second
 cannot be told apart; that direction is the safe one, because a conflict can be
 missed but never invented.
 
-### the default save folder is a Windows path, so there is nothing to look in here; pass --folder, or set the save folder on the Settings section
+### no No Man's Sky save folder was found in the places this build probes, so there is nothing to look in here; start the game once, pass --folder, or set the save folder on the Settings section
 
-cause: the sorter looks for saves in the HelloGames NMS folder under %APPDATA%,
-which means nothing on Linux or macOS, so there is no folder to probe and it
-says so rather than reporting an empty result.
-fix: start it with `--folder <path>`, or set the save folder in the Settings
-section. Under Proton the saves are inside the prefix, typically under
-`steamapps/compatdata/275850/pfx/`. Browsing and planning work from there; only
-apply refuses.
+cause: there is no save folder to probe on this machine. On Linux this usually
+means Steam is installed somewhere this build does not know, or No Man's Sky has
+never been started in its Proton prefix. On macOS it means the native
+`~/Library/Application Support/HelloGames/NMS` folder is not there. The sorter
+reports the absence rather than an empty result.
+fix: start the game once so its save folder exists, start the sorter with
+`--folder <path>`, or set the save folder in the Settings section. Under Proton
+the saves are inside the prefix, typically under
+`steamapps/compatdata/275850/pfx/drive_c/users/steamuser/AppData/Roaming/HelloGames/NMS`,
+and that is the folder to give it.
 
 ### the item table does not know this id. That is normal after a game patch, not an error: it is left exactly where it is.
 
@@ -893,10 +900,10 @@ is a refusal by design, at step 1, before any backup is taken.
 fix: everything except apply works here: the page, the item table, the planner,
 the dry run. To write, run the sorter on Windows against the same folder; the
 configuration file is portable and nothing in it is platform-specific. Under
-Proton the save folder is typically `<steam library>/steamapps/compatdata/27585
-0/pfx/drive_c/users/steamuser/AppData/Roaming/HelloGames/NMS`, and `--folder
-<path>` points the sorter at it, because the automatic probe is a Windows path
-and says so.
+Proton the save folder is
+`<steam library>/steamapps/compatdata/275850/pfx/drive_c/users/steamuser/AppData/Roaming/HelloGames/NMS`,
+and the first-run page finds it in every Steam library it knows. `--folder
+<path>` points the sorter at a prefix outside those libraries.
 
 ### the save file has changed on disk since that plan was printed. Re-run the dry run.
 

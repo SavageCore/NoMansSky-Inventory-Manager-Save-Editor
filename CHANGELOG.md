@@ -9,6 +9,17 @@ A data-only regeneration after a game patch bumps the patch version and
 
 ## [Unreleased]
 
+### Added
+
+- The first-run page finds the save folder on Linux and macOS as well as
+  Windows. On Linux it looks inside the game's Steam Proton prefix in every
+  Steam library it can find, including Flatpak and Snap Steam and the extra
+  libraries named by `libraryfolders.vdf`, so a Steam Deck microSD card and a
+  second drive are covered. On macOS it looks in
+  `~/Library/Application Support/HelloGames/NMS`. Several libraries are listed
+  for you to choose between; none is picked silently. Apply still refuses off
+  Windows, because the Proton process is invisible to a native process check.
+
 ## [1.0.2] - 2026-09-19
 
 ### Changed

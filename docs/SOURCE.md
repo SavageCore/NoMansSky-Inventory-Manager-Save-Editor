@@ -27,6 +27,9 @@ Flags pass straight through, for example `packaging\start.bat --folder "D:\my sa
 
 - Apply is Windows only on both. From source on Linux or macOS you can browse, plan and dry-run
   a save, and nothing is ever written.
+- The first-run page finds the save folder on its own: `%APPDATA%\HelloGames\NMS` on Windows, the
+  game's Steam Proton prefix in each Steam library on Linux, and
+  `~/Library/Application Support/HelloGames/NMS` on macOS. `--folder` overrides the search.
 - Stopping: ctrl-c in the window you started it from, or **Stop the sorter** at the foot of
   the Settings section.
 - Settings, configuration, backups and the log live in the same place as for the executable; see

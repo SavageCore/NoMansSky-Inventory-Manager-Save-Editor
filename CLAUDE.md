@@ -20,7 +20,7 @@ One HTML document, one stylesheet, one script, no framework, no bundler.
 |---|---|
 | `nms_sorter/__main__.py` | `python -m nms_sorter`; checks the Python floor before importing anything else |
 | `nms_sorter/cli.py` | flags, settings resolution, single-instance acquisition, browser launch, serve loop |
-| `nms_sorter/platform.py` | the only module that branches on the OS: game process check, state and runtime directories, single instance, frozen-build helpers |
+| `nms_sorter/platform.py` | the only module that branches on the OS: save folder discovery, game process check, state and runtime directories, single instance, frozen-build helpers |
 | `nms_sorter/settings.py` | `settings.json`; never crashes on a bad file, keeps unknown keys |
 | `nms_sorter/config.py` | the rules file: load, validate, migrate, save; `config_version` 2; five rotating `.bak` revisions |
 | `nms_sorter/codec.py` | the only place save bytes become Python and back: block framing, obfuscated-key JSON, the `mf_` metadata codec |
