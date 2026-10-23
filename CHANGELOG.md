@@ -9,6 +9,22 @@ A data-only regeneration after a game patch bumps the patch version and
 
 ## [Unreleased]
 
+### Changed
+
+- The item table is regenerated from game build 25732212 (7.06 Cosmos). Two
+  cosmetic banners are new, `BANNER_MAINFAM` and `BANNER_NMSA`; every existing
+  item kept its bucket, so nothing lands in a different chest than it did on
+  1.0.2.
+- A save that reports a version up to 4740 no longer carries the "outside the
+  range this build was verified on" note. 4740 is what 7.06 writes now, and
+  both current saves re-serialise byte for byte and apply on it in the corpus.
+
+### Fixed
+
+- The table pull from a game install no longer stops on an archive whose chunk
+  was stored rather than compressed. The texture archives store theirs
+  verbatim, and the pull used to abort with "unknown frame descriptor".
+
 ## [1.0.2] - 2026-09-19
 
 ### Changed

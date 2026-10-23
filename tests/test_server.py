@@ -1435,7 +1435,7 @@ def test_apply_refuses_an_unverified_version_only_in_strict_mode(srv,
         if kw.get("strict_version_check"):
             raise safety.Refused(
                 "this save reports version 4800; this build was verified on "
-                "4670 to 4735, and strict_version_check is on, so apply is "
+                "4670 to 4740, and strict_version_check is on, so apply is "
                 "refused.")
         return safety.Report(), {"rows": 1, "backup": str(srv.tmp)}
 
@@ -1759,7 +1759,7 @@ def test_a_gate_that_appears_between_the_plan_and_the_apply_is_409(
 
     def boom(*a, **kw):
         raise gate("this save reports version 9999; apply was verified on "
-                   "4735 only")
+                   "4740 only")
 
     monkeypatch.setattr(srv.app, "save", boom)
     status, b = post(srv, "/api/apply",
@@ -1792,7 +1792,7 @@ def test_warning_gates_reach_the_save_view_and_the_bootstrap_issues(
     `SaveFile.gates()` answers into `save.gates` and into the list the page
     already renders."""
     warned = [{"level": "warning", "where": "save",
-               "message": "this save reports Version 4740; 4735 is the newest "
+               "message": "this save reports Version 4800; 4740 is the newest "
                           "one that was verified"}]
     monkeypatch.setattr(type(srv.app.save()), "gates",
                         lambda self, strict=False: list(warned))
@@ -1826,7 +1826,7 @@ def test_the_version_gate_reaches_the_page_worded_for_the_mode(
     assert len(rows) == 1 and rows[0]["level"] == level, b["gates"]
     msg = rows[0]["message"]
     assert msg.startswith("this save reports version 4800; this build was "
-                          "verified on 4670 to 4735"), msg
+                          "verified on 4670 to 4740"), msg
     assert tail in msg, msg
     assert msg.endswith("."), "every sentence in it is punctuated: %s" % msg
     assert ("Apply proceeds" in msg) is (not strict), \
