@@ -16,12 +16,14 @@ Users are not at risk while you take your time.
 
 | For | Need |
 |---|---|
-| `tools/hgpak.py`, step 1 | `zstandard`. The `.pak` payloads are HGPAK v2 with raw Zstd frames, not PSARC. `python -m pip install zstandard`, or `pip install -e ".[data]"` |
-| MBINCompiler, step 2 | the .NET 8 runtime, and an MBINCompiler matching the game build. The version that shipped with the current data is 7.02.0.1, decompiled against game build 25233815; the data is stamped 25320008 because every input was re-extracted from that build's paks and compared byte for byte |
+| `tools/hgpak.py`, step 1 | `zstandard`. The `.pak` payloads are HGPAK v2, not PSARC: chunks are Zstd frames except where a frame would not shrink, which is stored verbatim. `python -m pip install zstandard`, or `pip install -e ".[data]"` |
+| MBINCompiler, step 2 | an MBINCompiler matching the game build. The release ships `MBINCompiler.exe`, `MBINCompiler-linux` and `MBINCompiler-macOS.zip`. The version that shipped with the current data is 7.07.0.1, whose mapping was built against game build 25800958; the data is stamped 25732212, the installed build every input was pulled from. No release is built against 25732212 itself, and a newer mapping is the safe direction to be off in |
 | steps 3 to 7 | nothing beyond the standard library |
 
-`nms-db/` is around 128 MB of Hello Games' content. It is not in this
-repository and must not be added to it.
+`nms-db/` is a few hundred MB of Hello Games' content. The five pulls below
+match filenames, so they bring models and textures with them, not only the
+tables. It is gitignored, it is not in this repository and it must not be added
+to it.
 
 **There is no route without a game install.** `tools/gen_emit.py` has one
 mode, `--tables` with `--lang`, and both are required. A rebuild that is not
@@ -47,20 +49,27 @@ which is the order `VehicleOwnership` is in.
 
 ### 2. Convert with the pinned MBINCompiler, and check the pin
 
+The pull writes the archive's own paths, so the `.mbin` files are nested. Give
+the compiler the exact set, or `find` them by name:
+
 ```
-MBINCompiler.exe nms-db/mbin/*.mbin
+find nms-db/mbin -name '*.mbin' \( -path '*/metadata/reality/tables/*' -o \
+     -name 'nms_loc*_english.mbin' -o -name 'gcvehicleglobals.global.mbin' \) \
+     -exec MBINCompiler-linux {} +
 ```
 
 Then sort the output: the reality, item and base-building tables plus
 `gcvehicleglobals.global.MXML` into `nms-db/tables/`, the `nms_loc*_english`
-files into `nms-db/lang/`.
+files into `nms-db/lang/`. Each `.MXML` is written beside its `.mbin`, so the
+two directories are built by copying, not by the compiler.
 
 **MBIN files carry a format version, and MBINCompiler is version-locked to the
 game.** A compiler older than the game refuses the file or, worse, decodes it
 with the previous struct layout and gives you plausible XML with the wrong field
-names. If the game's MBIN version moved, update the pin before anything else:
-the current pin is recorded in `nms_sorter/data/DATA_VERSION` as
-`mbincompiler`.
+names. If the game's MBIN version moved, update the pin before anything else.
+The pin is the `MBINCOMPILER` constant in `tools/gen_emit.py`, which is what
+`DATA_VERSION` is generated from: passing `--build` alone rewrites the table
+while leaving the old compiler version in the stamp.
 
 ### 3. Generate
 
