@@ -30,11 +30,11 @@ rpm: linux rpm-build rpm-install ## Build and install the .rpm package
 rpm-build: linux ## Build the .rpm package
 	$(PYTHON) packaging/build_rpm.py
 
-rpm-install: ## Install the built .rpm package
+rpm-install: ## Install (or reinstall) the built .rpm package
 	@rpm=$$(ls dist/nms-sorter-*.rpm | head -1); \
 	if [ -z "$$rpm" ]; then echo "no rpm found"; exit 1; fi; \
-	if [ "$$(id -u)" -eq 0 ]; then dnf install -y "$$rpm"; \
-	else sudo dnf install -y "$$rpm"; fi
+	if [ "$$(id -u)" -eq 0 ]; then rpm -Uvh --replacepkgs --replacefiles "$$rpm"; \
+	else sudo rpm -Uvh --replacepkgs --replacefiles "$$rpm"; fi
 
 flatpak: ## Build the Flatpak bundle (builds from source)
 	$(PYTHON) packaging/build_flatpak.py
