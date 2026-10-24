@@ -1,0 +1,30 @@
+app-id: com.savagecore.NmsSorter
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: nms-sorter
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --filesystem=home
+  - --talk-name=org.freedesktop.portal.Desktop
+modules:
+  - name: nms-sorter
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/lib/python3.12/site-packages
+      - cp -a nms_sorter /app/lib/python3.12/site-packages/
+      - mkdir -p /app/bin
+      - printf '#!/bin/sh\nexec python3 -m nms_sorter "$@"\n' > /app/bin/nms-sorter
+      - chmod 755 /app/bin/nms-sorter
+      - install -Dm644 packaging/linux/nms-sorter.desktop /app/share/applications/com.savagecore.NmsSorter.desktop
+      - install -Dm644 packaging/linux/nms-sorter.desktop /app/share/applications/nms-sorter.desktop
+      - install -Dm644 packaging/linux/nms-sorter.svg /app/share/icons/hicolor/scalable/apps/nms-sorter.svg
+      - install -Dm644 packaging/linux/nms-sorter.png /app/share/icons/hicolor/256x256/apps/nms-sorter.png
+      - install -Dm644 packaging/linux/nms-sorter.png /app/share/icons/hicolor/256x256/apps/com.savagecore.NmsSorter.png
+      - install -Dm644 packaging/linux/nms-sorter.svg /app/share/icons/hicolor/scalable/apps/com.savagecore.NmsSorter.svg
+      - install -Dm644 packaging/linux/metainfo.xml /app/share/metainfo/com.savagecore.NmsSorter.metainfo.xml || true
+    sources:
+      - type: dir
+        path: ../..

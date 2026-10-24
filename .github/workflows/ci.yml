@@ -232,3 +232,67 @@ jobs:
             dist/NMS-Sorter.exe
             dist/NMS-Sorter-console.exe
             dist/SHA256SUMS
+
+  release-linux:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    name: release-linux (${{ github.ref_name }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" pyinstaller
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev rpm flatpak flatpak-builder
+          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
+
+      - name: Install appimagetool
+        run: |
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool
+          chmod +x /usr/local/bin/appimagetool
+
+      - name: Release notes from the changelog
+        run: python packaging/changelog_section.py "${{ github.ref_name }}" -o "${{ runner.temp }}/RELEASE_BODY.md"
+
+      - name: Build Linux executables and tarball
+        run: python packaging/build_linux.py
+
+      - name: Build deb
+        run: python packaging/build_deb.py
+
+      - name: Build rpm
+        run: python packaging/build_rpm.py
+
+      - name: Build AppImage
+        run: python packaging/build_appimage.py
+
+      - name: Build Flatpak
+        run: python packaging/build_flatpak.py
+
+      - name: Packaging guards
+        run: python -m pytest tests/test_packaging.py tests/test_packaging_linux.py -q
+
+      - name: Publish
+        uses: softprops/action-gh-release@v4
+        with:
+          files: |
+            dist/NMS-Sorter-*-linux-x86_64.tar.gz
+            dist/NMS-Sorter-*-linux-x86_64.tar.gz.sha256
+            dist/nms-sorter_*_amd64.deb
+            dist/nms-sorter-*-*.x86_64.rpm
+            dist/NMS-Sorter-*-x86_64.AppImage
+            dist/com.savagecore.NmsSorter.flatpak

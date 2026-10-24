@@ -37,7 +37,10 @@ Windows SmartScreen will say "Windows protected your PC" because the build is
 not code-signed: click "More info", then "Run anyway". `SHA256SUMS` in the
 zip lets you check the files if you want to.
 
-Linux, macOS, or Python on Windows: [docs/SOURCE.md](docs/SOURCE.md).
+Linux: packaged builds (`nms-sorter_<version>_amd64.deb`,
+`nms-sorter-<version>-*.x86_64.rpm`, `NMS-Sorter-<version>-x86_64.AppImage`,
+`com.savagecore.NmsSorter.flatpak`) are on the release page. macOS, or Python
+on Windows: [docs/SOURCE.md](docs/SOURCE.md).
 
 ## How to use it
 

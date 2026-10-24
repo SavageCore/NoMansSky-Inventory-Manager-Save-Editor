@@ -17,6 +17,9 @@ packaging\start.bat
 ```
 
 On Linux or macOS run `packaging/start.sh` instead. Either script runs `python -m nms_sorter`
+
+Packaged Linux builds (deb, rpm, AppImage, Flatpak) are published on the release page and install
+the same binary without needing Python; see the README's Install section.
 from the repository root and opens the page in your browser; from there everything in
 `GUIDE.md` applies.
 
