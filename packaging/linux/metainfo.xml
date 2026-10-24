@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.savagecore.NmsSorter</id>
+  <name>NMS Inventory Sorter</name>
+  <summary>Sorts and edits No Man's Sky inventories locally and offline</summary>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>
+      A local, offline inventory sorter and save editor for No Man's Sky. Routes
+      categories of items to containers, shows exactly what would move, and writes
+      the save only after proving it can do so safely. Moves only what you own:
+      no spawning, no stat or unit editing.
+    </p>
+  </description>
+  <launchable type="desktop-id">nms-sorter.desktop</launchable>
+  <icon type="cached">nms-sorter</icon>
+
+  <url type="homepage">https://github.com/SavageCore/NoMansSky-Inventory-Manager-Save-Editor</url>
+  <provides>
+    <binary>nms-sorter</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+</component>

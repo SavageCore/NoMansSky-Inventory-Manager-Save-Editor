@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=NMS Inventory Sorter
+GenericName=No Man's Sky inventory sorter
+Comment=Sorts and edits No Man's Sky inventories locally and offline
+Exec=nms-sorter
+Icon=nms-sorter
+Terminal=false
+Categories=Game;Utility;
+StartupNotify=true
+StartupWMClass=NMS-Sorter
